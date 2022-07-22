@@ -82,7 +82,7 @@ def modified_files(root, tracked_only=False, commits=None):
         list_of_modified = {}
         for commit in commits:
             modified_files_commit = _modified_files_with_commit(root, commit)
-            print("Modified files commit", modified_files_commit)
+            #print("Modified files commit", modified_files_commit)
             list_of_modified.update(modified_files_commit)
         return list_of_modified
     # Convert to unicode and split
@@ -138,7 +138,12 @@ def modified_lines_for_pr(filename, extra_data, commits=[]):
     """
     line_numbers_map = []
     for commit in commits:
-        line_numbers_map.append(modified_lines(filename, extra_data, commit=commit))
+        #print(filename, commit)
+        result = modified_lines(filename, extra_data, commit=commit)
+        #print("Result: ", result)
+        if result:
+            line_numbers_map = line_numbers_map + result
+    print("Line numbers: ", line_numbers_map)
     return line_numbers_map
     
 def modified_lines(filename, extra_data, commit=None):
@@ -171,5 +176,6 @@ def modified_lines(filename, extra_data, commit=None):
             os.linesep.encode('utf-8'))
     modified_line_numbers = utils.filter_lines(
         blame_lines, commit + br' (?P<line>\d+) (\d+)', groups=('line', ))
-    print("Modified line numbers: ", modified_line_numbers)
-    return list(map(int, modified_line_numbers))
+    line_numbers = list(map(int, modified_line_numbers))
+    return line_numbers if line_numbers else []
+
