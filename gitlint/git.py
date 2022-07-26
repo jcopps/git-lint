@@ -41,6 +41,19 @@ def last_commit():
     except subprocess.CalledProcessError:
         return None
 
+def commits_head_to_main(master='main') -> list:
+    """Returns the list of SHA1 from Head to main."""
+    try:
+        commits = subprocess.check_output(
+            ['git', 'log', 'origin/{}..HEAD'.format(master), '--oneline',
+            '--no-merges', "--pretty=%H"], stderr=subprocess.STDOUT).strip()
+        # Convert to unicode first
+        commits = commits.decode('utf-8').split('\n')
+        return commits
+    except subprocess.CalledProcessError:
+        return []
+
+
 
 def _remove_filename_quotes(filename):
     """Removes the quotes from a filename returned by git status."""
@@ -50,13 +63,13 @@ def _remove_filename_quotes(filename):
     return filename
 
 
-def modified_files(root, tracked_only=False, commit=None):
+def modified_files(root, tracked_only=False, commits=None):
     """Returns a list of files that has been modified since the last commit.
 
     Args:
       root: the root of the repository, it has to be an absolute path.
       tracked_only: exclude untracked files when True.
-      commit: SHA1 of the commit. If None, it will get the modified files in the
+      commits: SHA1 of the commits. If None, it will get the modified files in the
         working copy.
 
     Returns: a dictionary with the modified files as keys, and additional
@@ -65,9 +78,13 @@ def modified_files(root, tracked_only=False, commit=None):
     """
     assert os.path.isabs(root), "Root has to be absolute, got: %s" % root
 
-    if commit:
-        return _modified_files_with_commit(root, commit)
-
+    if commits:
+        list_of_modified = {}
+        for commit in commits:
+            modified_files_commit = _modified_files_with_commit(root, commit)
+            #print("Modified files commit", modified_files_commit)
+            list_of_modified.update(modified_files_commit)
+        return list_of_modified
     # Convert to unicode and split
     status_lines = subprocess.check_output([
         'git', 'status', '--porcelain', '--untracked-files=all',
@@ -105,7 +122,30 @@ def _modified_files_with_commit(root, commit):
     return dict((os.path.join(root, _remove_filename_quotes(filename)),
                  mode + ' ') for filename, mode in modified_file_status)
 
+def modified_lines_for_pr(filename, extra_data, commits=[]):
+    """Returns the lines that have been modifed for the list of commit IDs
+    Args:
+      filename: the file to check.
+      extra_data: is the extra_data returned by modified_files. Additionally, a
+        value of None means that the file was not modified.
+      commits: the complete sha1 (40 chars) of the commits. Note that specifying
+        this value will only work (100%) when commit == last_commit (with
+        respect to the currently checked out revision), otherwise, we could miss
+        some lines.
 
+    Returns: a list of lines that were modified, or None in case all lines are
+      new.
+    """
+    line_numbers_map = []
+    for commit in commits:
+        #print(filename, commit)
+        result = modified_lines(filename, extra_data, commit=commit)
+        #print("Result: ", result)
+        if result:
+            line_numbers_map = line_numbers_map + result
+    print("Line numbers: ", line_numbers_map)
+    return line_numbers_map
+    
 def modified_lines(filename, extra_data, commit=None):
     """Returns the lines that have been modifed for this file.
 
@@ -136,5 +176,6 @@ def modified_lines(filename, extra_data, commit=None):
             os.linesep.encode('utf-8'))
     modified_line_numbers = utils.filter_lines(
         blame_lines, commit + br' (?P<line>\d+) (\d+)', groups=('line', ))
+    line_numbers = list(map(int, modified_line_numbers))
+    return line_numbers if line_numbers else []
 
-    return list(map(int, modified_line_numbers))
