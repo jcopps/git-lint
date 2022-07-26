@@ -143,7 +143,7 @@ def modified_lines_for_pr(filename, extra_data, commits=[]):
         #print("Result: ", result)
         if result:
             line_numbers_map = line_numbers_map + result
-    print("Line numbers: ", line_numbers_map)
+    #print("Line numbers: ", line_numbers_map)
     return line_numbers_map
     
 def modified_lines(filename, extra_data, commit=None):
