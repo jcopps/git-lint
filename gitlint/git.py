@@ -81,9 +81,10 @@ def modified_files(root, tracked_only=False, commits=None):
     if commits:
         list_of_modified = {}
         for commit in commits:
-            modified_files_commit = _modified_files_with_commit(root, commit)
-            #print("Modified files commit", modified_files_commit)
-            list_of_modified.update(modified_files_commit)
+            if commit:
+                modified_files_commit = _modified_files_with_commit(root, commit)
+                #print("Modified files commit", modified_files_commit)
+                list_of_modified.update(modified_files_commit)
         return list_of_modified
     # Convert to unicode and split
     status_lines = subprocess.check_output([
